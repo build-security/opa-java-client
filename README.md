@@ -1,1 +1,1 @@
-# opa-java-pojo-client
+# opa-java-client
