@@ -3,12 +3,17 @@ package security.build.pdp.client;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import net.jodah.failsafe.Failsafe;
+import net.jodah.failsafe.FailsafeException;
+import net.jodah.failsafe.RetryPolicy;
 import okhttp3.*;
 
+import java.io.IOException;
 import java.io.Serializable;
-import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -102,7 +107,7 @@ public class PdpClient implements Serializable {
             client.retryMaxAttempts = this.retryMaxAttempts;
             client.retryBackoffMilliseconds = this.retryBackoffMilliseconds;
 
-            client.configureHttpClient();
+            client.loadHttpClient();
 
             return client;
         }
@@ -117,8 +122,8 @@ public class PdpClient implements Serializable {
     private int retryMaxAttempts = DefaultRetryMaxAttempts;
     private int retryBackoffMilliseconds = DefaultRetryBackoffMilliseconds;
 
+    private RetryPolicy<Object> retryPolicy;
     private OkHttpClient client;
-
     private ObjectMapper mapper;
 
     public PdpClient() {
@@ -127,13 +132,55 @@ public class PdpClient implements Serializable {
         this.mapper = new ObjectMapper();
     }
 
-    private void configureHttpClient() {
+    private void loadHttpClient() {
+        this.retryPolicy = new RetryPolicy<>()
+                .handle(IOException.class)
+                .withBackoff(this.retryBackoffMilliseconds, (this.retryBackoffMilliseconds*this.retryMaxAttempts)+1, ChronoUnit.MILLIS)
+                .withMaxAttempts(this.retryMaxAttempts);
+
         this.client = new OkHttpClient.Builder()
                 .connectTimeout(this.connectionTimeoutMilliseconds, TimeUnit.MILLISECONDS)
                 .readTimeout(this.readTimeoutMilliseconds, TimeUnit.MILLISECONDS)
+                .retryOnConnectionFailure(false) // Disable OkHTTPs automatic retries -- they don't provide enough granularity and are harder to test.
                 .build();
+    }
 
-        // TODO(yashtewari): Configure retries.
+    // For mocking only.
+    public void setMockHttpClient(OkHttpClient client) {
+        this.client = client;
+    }
+
+    // Properties.
+    public int getPort() {
+        return  this.port;
+    }
+
+    public String getHostname() {
+        return this.hostname;
+    }
+
+    public String getSchema() {
+        return this.schema;
+    }
+
+    public String getPolicyPath() {
+        return this.policyPath;
+    }
+
+    public int getReadTimeoutMilliseconds() {
+        return this.readTimeoutMilliseconds;
+    }
+
+    public int getConnectionTimeoutMilliseconds() {
+        return this.connectionTimeoutMilliseconds;
+    }
+
+    public int getRetryMaxAttempts() {
+        return this.retryMaxAttempts;
+    }
+
+    public int getRetryBackoffMilliseconds() {
+        return this.retryBackoffMilliseconds;
     }
 
     public void loadConfigurationFromEnvironment() {
@@ -194,7 +241,7 @@ public class PdpClient implements Serializable {
             }
         }
 
-        this.configureHttpClient();
+        this.loadHttpClient();
     }
 
     public String getPdpEndpoint() throws URISyntaxException {
@@ -203,7 +250,7 @@ public class PdpClient implements Serializable {
         return uri.toString();
     }
 
-    private ResponseBody evaluate(Object requestObject) throws Throwable {
+    public Response evaluateExecute(Object requestObject) throws Throwable {
         byte[] json = this.mapper.writeValueAsBytes(requestObject);
         RequestBody body = RequestBody.create(json, JSON);
 
@@ -212,32 +259,36 @@ public class PdpClient implements Serializable {
                 .post(body)
                 .build();
 
-        try (Response response = client.newCall(request).execute()) {
-            return response.body();
-        }
+        Response response = client.newCall(request).execute();
+
+        return response;
+    }
+
+    private Response evaluate(Object requestObject) throws Throwable {
+        return Failsafe.with(this.retryPolicy).get(() -> evaluateExecute(requestObject));
     }
 
     public JsonNode getJsonResponse(Map<String, Object> input) throws Throwable {
-        ResponseBody body = evaluate(input);
+        Response response = evaluate(input);
 
-        return this.mapper.readTree(body.bytes());
+        return this.mapper.readTree(response.body().bytes());
     }
 
     public JsonNode getJsonResponse(PdpRequest request) throws  Throwable {
-        ResponseBody body = evaluate(request);
+        Response response = evaluate(request);
 
-        return this.mapper.readTree(body.bytes());
+        return this.mapper.readTree(response.body().bytes());
     }
 
     public Map<String, Object> getMappedResponse(Map<String, Object> input) throws Throwable {
-        ResponseBody body = evaluate(input);
+        Response response = evaluate(input);
 
-        return this.mapper.readValue(body.bytes(), new TypeReference<Map<String, Object>>() {});
+        return this.mapper.readValue(response.body().bytes(), new TypeReference<Map<String, Object>>() {});
     }
 
     public Map<String, Object> getMappedResponse(PdpRequest request) throws Throwable {
-        ResponseBody body = evaluate(request);
+        Response response = evaluate(request);
 
-        return this.mapper.readValue(body.bytes(), new TypeReference<Map<String, Object>>() {});
+        return this.mapper.readValue(response.body().bytes(), new TypeReference<Map<String, Object>>() {});
     }
 }
