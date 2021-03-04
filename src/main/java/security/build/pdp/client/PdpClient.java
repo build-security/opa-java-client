@@ -10,8 +10,10 @@ import okhttp3.*;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URL;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.Map;
@@ -33,7 +35,6 @@ public class PdpClient implements Serializable {
 
     public static String EnvPort = "PDP_PORT";
     public static String EnvHostname = "PDP_HOSTNAME";
-    public static String EnvSchema = "PDP_SCHEMA";
     public static String EnvPolicyPath = "PDP_POLICY_PATH";
     public static String EnvReadTimeoutMilliseconds = "PDP_READ_TIMEOUT_MILLISECONDS";
     public static String EnvConnectionTimeoutMilliseconds = "PDP_CONNECTION_TIMEOUT_MILLISECONDS";
@@ -145,7 +146,7 @@ public class PdpClient implements Serializable {
                 .build();
     }
 
-    // For mocking only.
+    // Replace the client with a mock client. Recommended for use in tests only.
     public void setMockHttpClient(OkHttpClient client) {
         this.client = client;
     }
@@ -199,11 +200,6 @@ public class PdpClient implements Serializable {
             this.hostname = hostname;
         }
 
-        String schema = env.get(EnvSchema);
-        if (schema != null) {
-            this.schema = schema;
-        }
-
         String policyPath = env.get(EnvPolicyPath);
         if (policyPath != null) {
             this.policyPath = policyPath;
@@ -244,10 +240,25 @@ public class PdpClient implements Serializable {
         this.loadHttpClient();
     }
 
-    public String getPdpEndpoint() throws URISyntaxException {
-        URI uri = new URI(this.schema, null, this.hostname, this.port, this.policyPath, null, null);
+    public String getPdpEndpoint() throws Throwable {
+        String schema = this.schema, hostname = this.hostname, policyPath = this.policyPath;
 
-        return uri.toString();
+        String hostnameParts[] = this.hostname.split("://");
+
+        if (hostnameParts.length > 2) {
+            throw new MalformedURLException(String.format("Invalid schema/hostname: %s", this.hostname));
+        } else if (hostnameParts.length == 2) {
+            schema = hostnameParts[0];
+            hostname = hostnameParts[1];
+        }
+
+        if (!policyPath.startsWith("/")) {
+            policyPath = String.format("/%s", policyPath);
+        }
+
+        URL url = new URL(schema, hostname, this.port, policyPath);
+
+        return url.toString();
     }
 
     public Response evaluateExecute(Object requestObject) throws Throwable {
