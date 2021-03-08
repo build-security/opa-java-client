@@ -19,6 +19,10 @@ import java.time.temporal.ChronoUnit;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * Implements a configurable HTTP client that request authorization decisions from a Policy Decision Point based on the
+ * the input provided.
+ */
 public class PdpClient implements Serializable {
 
     public static final MediaType JSON
@@ -41,6 +45,9 @@ public class PdpClient implements Serializable {
     public static String EnvRetryMaxAttempts = "PDP_RETRY_MAX_ATTEMPTS";
     public static String EnvRetryBackoffMilliseconds = "PDP_RETRY_BACKOFF_MILLISECONDS";
 
+    /**
+     * Allows constructing a new PdpClient object with desired configuration.
+     */
     public static class Builder {
         private int port = PdpClient.DefaultPort;
         private String hostname = PdpClient.DefaultHostname;
@@ -146,12 +153,20 @@ public class PdpClient implements Serializable {
                 .build();
     }
 
-    // Replace the client with a mock client. Recommended for use in tests only.
+    /**
+     * Replaces the HTTP client with a mock client.
+     *
+     * This can only be used for mocking and testing, because the client is meant to be recreated and replaced whenever
+     * configuration values change.
+     *
+     * @param client a mock HTTP client
+     */
     public void setMockHttpClient(OkHttpClient client) {
         this.client = client;
     }
 
     // Properties.
+
     public int getPort() {
         return  this.port;
     }
@@ -184,6 +199,9 @@ public class PdpClient implements Serializable {
         return this.retryBackoffMilliseconds;
     }
 
+    /**
+     * Loads configuration values from environment variables and recreates the HTTP client based on them.
+     */
     public void loadConfigurationFromEnvironment() {
         Map<String, String> env = System.getenv();
 
@@ -240,6 +258,16 @@ public class PdpClient implements Serializable {
         this.loadHttpClient();
     }
 
+    /**
+     * Returns a URL to the Policy Decision Point by constructing it as per configuration values.
+     *
+     * Handles expected configuration values:
+     * - hostname can include the schema, or default to HTTP
+     * - policyPath may or may not have a leading /
+     *
+     * @return a URL to the Policy Decision Point
+     * @throws Throwable
+     */
     public String getPdpEndpoint() throws Throwable {
         String schema = this.schema, hostname = this.hostname, policyPath = this.policyPath;
 
@@ -261,6 +289,13 @@ public class PdpClient implements Serializable {
         return url.toString();
     }
 
+    /**
+     * Executes the request to the Policy Decision Point and returns the response.
+     *
+     * @param requestObject the request to make to the Policy Decision Point
+     * @return the response from the Policy Decision Point
+     * @throws Throwable
+     */
     public Response evaluateExecute(Object requestObject) throws Throwable {
         byte[] json = this.mapper.writeValueAsBytes(requestObject);
         RequestBody body = RequestBody.create(json, JSON);
@@ -275,28 +310,67 @@ public class PdpClient implements Serializable {
         return response;
     }
 
+    /**
+     * Calls evaluateExecute with requestObject multiple times based on the retry policy, and returns the response.
+     *
+     * @param requestObject the request to make to the Policy Decision Point
+     * @return the response from the Policy Decision Point
+     * @throws Throwable
+     */
     private Response evaluate(Object requestObject) throws Throwable {
         return Failsafe.with(this.retryPolicy).get(() -> evaluateExecute(requestObject));
     }
 
+    /**
+     * Returns the JSON object response from the Policy Decision Point, after making the request as per the
+     * defined configuration values.
+     *
+     * @param input a Java native input object that is serialized for making the request to the Policy Decision Point.
+     * @return the JSON object response from the Policy Decision Point.
+     * @throws Throwable
+     */
     public JsonNode getJsonResponse(Map<String, Object> input) throws Throwable {
         Response response = evaluate(input);
 
         return this.mapper.readTree(response.body().bytes());
     }
 
+    /**
+     * Returns the JSON object response from the Policy Decision Point, after making the request as per the
+     * defined configuration values.
+     *
+     * @param request a PdpRequest object that is serialized for making the request to the Policy Decision Point.
+     * @return the JSON object response from the Policy Decision Point.
+     * @throws Throwable
+     */
     public JsonNode getJsonResponse(PdpRequest request) throws  Throwable {
         Response response = evaluate(request);
 
         return this.mapper.readTree(response.body().bytes());
     }
 
+    /**
+     * Returns the response body from the Policy Decision Point, after making the request as per the
+     * defined configuration values, and deserializing the JSON response.
+     *
+     * @param input a Java native input object that is serialized for making the request to the Policy Decision Point.
+     * @return the Map representation of the response from the Policy Decision Point.
+     * @throws Throwable
+     */
     public Map<String, Object> getMappedResponse(Map<String, Object> input) throws Throwable {
         Response response = evaluate(input);
 
         return this.mapper.readValue(response.body().bytes(), new TypeReference<Map<String, Object>>() {});
     }
 
+    /**
+     * Returns the response body from the Policy Decision Point, after making the request as per the
+     * defined configuration values, and deserializing the JSON response.
+     *
+     * @param request a PdpRequest object that is serialized for making the request to the Policy Decision Point.
+     * @return the Map representation of the response from the Policy Decision Point.
+     * @throws Throwable
+     */
     public Map<String, Object> getMappedResponse(PdpRequest request) throws Throwable {
         Response response = evaluate(request);
 
