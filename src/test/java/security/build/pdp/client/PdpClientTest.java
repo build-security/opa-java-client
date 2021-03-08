@@ -14,6 +14,8 @@ import org.junit.jupiter.api.Test;
 
 import java.io.*;
 import java.net.MalformedURLException;
+import java.util.HashMap;
+import java.util.Map;
 
 import static org.mockito.Mockito.*;
 
@@ -136,7 +138,7 @@ class PdpClientTest {
     }
 
     @Test()
-    void getJsonResponse_statusOk_noRetry() throws Throwable {
+    void getJsonResponse_pdpRequest_statusOk_noRetry() throws Throwable {
         when(this.mockCall.execute()).thenReturn(this.mockResponse);
 
         PdpRequest request = new PdpRequest();
@@ -151,25 +153,23 @@ class PdpClientTest {
     }
 
     @Test()
-    void getJsonResponse_serverError_retry() throws Throwable {
+    void getJsonResponse_pdpRequest_serverError_retry() throws Throwable {
         when(this.mockCall.execute())
                 .thenThrow(new IOException()).thenReturn(this.mockResponse);
-
-
 
         PdpRequest request = new PdpRequest();
         JsonNode node = staticPdpClient.getJsonResponse(request);
 
-        //assert that there were exactly 2 attempts
+        // Assert that there were exactly 2 attempts
         verify(this.mockCall, times(2)).execute();
 
-        //assert that the returned JSON node is correct
+        // Assert that the returned JSON node is correct
         Assertions.assertEquals("1", node.get("a").asText());
         Assertions.assertEquals("2", node.get("b").asText());
     }
 
     @Test()
-    void getJsonResponse_serverError_retriesExhausted() throws Throwable {
+    void getJsonResponse_pdpRequest_serverError_retriesExhausted() throws Throwable {
         when(this.mockCall.execute())
                 .thenThrow(new IOException())
                 .thenThrow(new IOException());
@@ -181,7 +181,151 @@ class PdpClientTest {
             //we are expecting a 5xx exception to be thrown
         }
 
-        //assert that there were exactly 2 attempts
+        // Assert that there were exactly 2 attempts
+        verify(this.mockCall, times(2)).execute();
+    }
+
+    @Test()
+    void getJsonResponse_map_statusOk_noRetry() throws Throwable {
+        when(this.mockCall.execute()).thenReturn(this.mockResponse);
+
+        Map<String, Object> input = new HashMap<String, Object>();
+        JsonNode node = staticPdpClient.getJsonResponse(input);
+
+        // Assert that there was no retry on a successful attempt.
+        verify(this.mockCall, times(1)).execute();
+
+        // Assert that the returned JSON node is correct.
+        Assertions.assertEquals("1", node.get("a").asText());
+        Assertions.assertEquals("2", node.get("b").asText());
+    }
+
+    @Test()
+    void getJsonResponse_map_serverError_retry() throws Throwable {
+        when(this.mockCall.execute())
+                .thenThrow(new IOException()).thenReturn(this.mockResponse);
+
+        Map<String, Object> input = new HashMap<String, Object>();
+        JsonNode node = staticPdpClient.getJsonResponse(input);
+
+        // Assert that there were exactly 2 attempts
+        verify(this.mockCall, times(2)).execute();
+
+        // Assert that the returned JSON node is correct
+        Assertions.assertEquals("1", node.get("a").asText());
+        Assertions.assertEquals("2", node.get("b").asText());
+    }
+
+    @Test()
+    void getJsonResponse_map_serverError_retriesExhausted() throws Throwable {
+        when(this.mockCall.execute())
+                .thenThrow(new IOException())
+                .thenThrow(new IOException());
+
+        Map<String, Object> input = new HashMap<String, Object>();
+        try {
+            JsonNode node = staticPdpClient.getJsonResponse(input);
+        } catch (FailsafeException exception) {
+            //we are expecting a 5xx exception to be thrown
+        }
+
+        // Assert that there were exactly 2 attempts
+        verify(this.mockCall, times(2)).execute();
+    }
+
+    @Test()
+    void getMappedResponse_pdpRequest_statusOk_noRetry() throws Throwable {
+        when(this.mockCall.execute()).thenReturn(this.mockResponse);
+
+        PdpRequest request = new PdpRequest();
+        Map<String, Object> response = staticPdpClient.getMappedResponse(request);
+
+        // Assert that there was no retry on a successful attempt.
+        verify(this.mockCall, times(1)).execute();
+
+        // Assert that the returned JSON node is correct.
+        Assertions.assertEquals("1", response.get("a"));
+        Assertions.assertEquals("2", response.get("b"));
+    }
+
+    @Test()
+    void getMappedResponse_pdpRequest_serverError_retry() throws Throwable {
+        when(this.mockCall.execute())
+                .thenThrow(new IOException()).thenReturn(this.mockResponse);
+
+        PdpRequest request = new PdpRequest();
+        Map<String, Object> response = staticPdpClient.getMappedResponse(request);
+
+        // Assert that there were exactly 2 attempts
+        verify(this.mockCall, times(2)).execute();
+
+        // Assert that the returned JSON node is correct
+        Assertions.assertEquals("1", response.get("a"));
+        Assertions.assertEquals("2", response.get("b"));
+    }
+
+    @Test()
+    void getMappedResponse_pdpRequest_serverError_retriesExhausted() throws Throwable {
+        when(this.mockCall.execute())
+                .thenThrow(new IOException())
+                .thenThrow(new IOException());
+
+        PdpRequest request = new PdpRequest();
+        try {
+            staticPdpClient.getMappedResponse(request);
+        } catch (FailsafeException exception) {
+            // We are expecting a 5xx exception to be thrown.
+        }
+
+        // Assert that there were exactly 2 attempts
+        verify(this.mockCall, times(2)).execute();
+    }
+
+    @Test()
+    void getMappedResponse_map_statusOk_noRetry() throws Throwable {
+        when(this.mockCall.execute()).thenReturn(this.mockResponse);
+
+        Map<String, Object> input = new HashMap<String, Object>();
+        Map<String, Object> response = staticPdpClient.getMappedResponse(input);
+
+        // Assert that there was no retry on a successful attempt.
+        verify(this.mockCall, times(1)).execute();
+
+        // Assert that the returned JSON node is correct.
+        Assertions.assertEquals("1", response.get("a"));
+        Assertions.assertEquals("2", response.get("b"));
+    }
+
+    @Test()
+    void getMappedResponse_map_serverError_retry() throws Throwable {
+        when(this.mockCall.execute())
+                .thenThrow(new IOException()).thenReturn(this.mockResponse);
+
+        Map<String, Object> input = new HashMap<String, Object>();
+        Map<String, Object> response = staticPdpClient.getMappedResponse(input);
+
+        // Assert that there were exactly 2 attempts
+        verify(this.mockCall, times(2)).execute();
+
+        // Assert that the returned JSON node is correct
+        Assertions.assertEquals("1", response.get("a"));
+        Assertions.assertEquals("2", response.get("b"));
+    }
+
+    @Test()
+    void getMappedResponse_map_serverError_retriesExhausted() throws Throwable {
+        when(this.mockCall.execute())
+                .thenThrow(new IOException())
+                .thenThrow(new IOException());
+
+        Map<String, Object> input = new HashMap<String, Object>();
+        try {
+            Map<String, Object> response = staticPdpClient.getMappedResponse(input);
+        } catch (FailsafeException exception) {
+            // We are expecting a 5xx exception to be thrown.
+        }
+
+        // Assert that there were exactly 2 attempts
         verify(this.mockCall, times(2)).execute();
     }
 }
