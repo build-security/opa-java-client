@@ -18,6 +18,7 @@ To simplify the setup process, the following example uses a local [build.securit
 If you are already familiar with how to run your PDP (Policy Decision Point), You can also run a pdp on you environment (Dev/Prod, etc).
 
 In that case, don't forget to change the **hostname** and the **port** in your code.
+
 ---
 
 ### Simple usage
@@ -59,7 +60,7 @@ Run your PDP (OPA) instance (assuming it runs on localhost:8181) and your java s
 * Please make sure to [define some pdp policy rules](https://docs.build.security/policies/creating-a-new-policy).
 ### PDP Request example
 
-This is what the input received by the PDP would look like.
+This is what the input received by the PDP would look like:
 
 ```
 {"username":"myname"}POST /v1/data/java/authz/allow HTTP/1.1
