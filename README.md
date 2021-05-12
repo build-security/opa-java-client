@@ -1,19 +1,23 @@
 # opa-java-client
+
+<p align="center"><img src="Logo-build.png" class="center" alt="build-logo" width="30%"/></p>
+
 ## Abstract
-opa-java-client is a Java middleware meant for authorizing API requests using a 3rd party policy engine (OPA) as the Policy Decision Point (PDP).
-If you're not familiar with OPA, please [learn more](https://www.openpolicyagent.org/).
+[build.security](https://docs.build.security/) provides simple development and management of the organization's authorization policy.
+opa-java-client is a Java middleware intended for performing authorizing requests against build.security pdp/[OPA](https://www.openpolicyagent.org/).
 ## Data Flow
-![enter image description here](https://github.com/build-security/opa-express-middleware/blob/main/Data%20flow.png)
+<p align="center"> <img src="Data%20flow.png" alt="drawing" width="60%"/></p>
+
 ## Usage
-### Prerequisites 
-- Finish our "onboarding" tutorial
-- Run a pdp instance
+Before you start we recommend completing the onboarding tutorial.
+
 ---
 **Important note**
 
-In the following example we used our aws managed pdp instance to ease your first setup, but if you feel comfortable you are recommended to use your own pdp instance instead.
-In that case, don't forget to change the **hostname** and the **port** in your code.
+To simplify the setup process, the following example uses a local [build.security pdp instance](https://docs.build.security/policy-decision-points-pdp/pdp-deployments/standalone-docker-1).
+If you are already familiar with how to run your PDP (Policy Decision Point), You can also run a pdp on you environment (Dev/Prod, etc).
 
+In that case, don't forget to change the **hostname** and the **port** in your code.
 ---
 
 ### Simple usage
@@ -21,101 +25,57 @@ Make a new client
 
 ```java
 PdpClient client = new PdpClient.Builder()
-    .hostname("localhost")
-    .port(8181)
-    .policyPath("/mypolicy")
-    .retryMaxAttempts(5);
-```
-
-Make an object that will be used as input to the PDP
-
-```java
+			.hostname("localhost")
+			.port(8181).policyPath("/java/authz/allow")
+			.retryMaxAttempts(5)
+			.build();
+ 
 Map<String, Object> input = new HashMap<String, Object>();
 
+// put your json input here
 input.put("username", "myname");
-```
 
-Get a decision from the PDP
-
-```java
+// get a decision from the PDP
 JsonNode response = client.getJsonResponse(input);
 ```
 
-### Mandatory configuration
-
- 1. `hostname`: The hostname of the Policy Decision Point (PDP)
- 2. `port`: The port at which the OPA service is running
- 3. `policyPath`: Full path to the policy (including the rule) that decides whether requests should be authorized
-
 ### Optional configuration
- 1. `allowOnFailure`: Boolean. "Fail open" mechanism to allow access to the API in case the policy engine is not reachable. **Default is false**.
- 2. `includeBody`: Boolean. Whether or not to pass the request body to the policy engine. **Default is true**.
- 3. `includeHeaders`: Boolean. Whether or not to pass the request headers to the policy engine. **Default is true**
- 4. `timeout`: Boolean. Amount of time to wait before request is abandoned and request is declared as failed. **Default is 1000ms**.
- 5. `enable`: Boolean. Whether or not to consult with the policy engine for the specific request. **Default is true**
- 6. `enrich`: Object. An object to attach to the request that is being sent to the policy engine. **Default is an empty object {}**
+
+ 1. `hostname`: The hostname of the Policy Decision Point (PDP). **Default is localhost**
+ 2. `port`: The port at which the OPA service is running. **Default is 8181**
+ 3. `policyPath`: Full path to the policy (including the rule) that decides whether requests should be authorized. **Default is '/v1/data/authz'**
+ 4. `retryMaxAttempts` - Integer. the maximum number of retry attempts in case a failure occurs. **Default is 2**.
+ 5. `pdp.enable`: Boolean. Whether or not to consult with the policy engine for the specific request. **Default is true**
+ 6. `readTimeoutMilliseconds` - Integer. Read timeout for requests in milliseconds. **Default is 5000**
+ 7. `connectionTimeoutMilliseconds` - Integer. Connection timeout in milliseconds. **Default is 5000**
+ 8. `retryBackoffMilliseconds` - Integer. The number of milliseconds to wait between two consecutive retry attempts. **Default is 250** 
 
 The following options can be configured, either explicitly using `PdpClient.Builder` methods, or via environment variables.
 
-Java method | Environment variable | Description | Default
---- | --- | --- | ---
-`port` | `PDP_PORT` | Port to connect to the PDP | `8181`
-`hostname` | `PDP_HOSTNAME` | Hostname of the PDP | `"localhost"`
-`policyPath` | `PDP_POLICY_PATH` | Path to the policy that makes the decision | `"/authz"`
-`readTimeoutMilliseconds` | `PDP_READ_TIMEOUT_MILLISECONDS` | Duration to wait on the response stream, in milliseconds | `5000` 
-`connectionTimeoutMilliseconds` | `PDP_CONNECTION_TIMEOUT_MILLISECONDS` | Duration to wait for connection to establish, in milliseconds | `5000`
-`retryMaxAttempts` | `PDP_RETRY_MAX_ATTEMPTS` | Total attempts at connection before giving up | `2`
-`retryBackoffMilliseconds` | `PDP_RETRY_BACKOFF_MILLISECONDS` | Duration to wait before each retry, doubled on each iteration | `250`
-
 Configuration values defined explicitly using Java methods are prioritized over values available in environment variables.
+## Try it out
 
+Run your PDP (OPA) instance (assuming it runs on localhost:8181) and your java server.  
+* Please make sure to [define some pdp policy rules](https://docs.build.security/policies/creating-a-new-policy).
 ### PDP Request example
 
 This is what the input received by the PDP would look like.
 
 ```
+{"username":"myname"}POST /v1/data/java/authz/allow HTTP/1.1
+Content-Type: application/json; charset=utf-8
+Content-Length: 21
+Host: localhost:8181
+Connection: Keep-Alive
+Accept-Encoding: gzip
+```
+
+If everything works well you should receive the following response:
+
+```
 {
-    "input": {
-        "request": {
-            "method": "GET",
-            "query": {
-                "querykey": "queryvalue"
-            },
-            "path": "/some/path",
-            "scheme": "http",
-            "host": "localhost",
-            "body": {
-                "bodykey": "bodyvalue"
-            },
-            "headers": {
-                "content-type": "application/json",
-                "user-agent": "PostmanRuntime/7.26.5",
-                "accept": "*/*",
-                "cache-control": "no-cache",
-                "host": "localhost:3000",
-                "accept-encoding": "gzip, deflate, br",
-                "connection": "keep-alive",
-                "content-length": "24"
-            }
-        },
-        "source": {
-            "port": 63405,
-            "address": "::1"
-        },
-        "destination": {
-            "port": 3000,
-            "address": "::1"
-        },
-        "resources": {
-            "attributes": {
-                "region": "israel",
-                "userId": "buildsec"
-            },
-            "permissions": [
-                "user.read"
-            ]
-        },
-        "serviceId": 1
+    "result": {
+        "allow": true
     }
 }
 ```

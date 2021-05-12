@@ -31,7 +31,7 @@ public class PdpClient implements Serializable {
     public static int DefaultPort = 8181;
     public static String DefaultHostname = "localhost";
     public static String DefaultSchema = "http";
-    public static String DefaultPolicyPath = "/authz";
+    public static String DefaultPolicyPath = "v1/data/authz";
     public static int DefaultReadTimeoutMilliseconds = 5000;
     public static int DefaultConnectionTimeoutMilliseconds = 5000;
     public static int DefaultRetryMaxAttempts = 2;
@@ -74,7 +74,7 @@ public class PdpClient implements Serializable {
         }
 
         public Builder policyPath(String policyPath) {
-            this.policyPath = policyPath;
+            this.policyPath = "v1/data" + policyPath;
 
             return this;
         }
