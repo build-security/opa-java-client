@@ -63,12 +63,39 @@ Run your PDP (OPA) instance (assuming it runs on localhost:8181) and your java s
 This is what the input received by the PDP would look like:
 
 ```
-{"username":"myname"}POST /v1/data/java/authz/allow HTTP/1.1
-Content-Type: application/json; charset=utf-8
-Content-Length: 21
-Host: localhost:8181
-Connection: Keep-Alive
-Accept-Encoding: gzip
+{
+   "input":{
+      "request":{
+         "scheme":"http",
+         "method":"GET",
+         "path":"websecurity",
+         "query":{
+            
+         },
+         "headers":{
+            "host":"localhost:8080",
+            "user-agent":"curl/7.64.1",
+            "accept":"*/*"
+         }
+      },
+      "resources":{
+         "requirements":[
+            "websecurity"
+         ],
+         "attributes":{
+            
+         }
+      },
+      "source":{
+         "ipAddress":"172.19.0.1",
+         "port":0
+      },
+      "destination":{
+         "ipAddress":"172.19.0.2",
+         "port":0
+      }
+   }
+}
 ```
 
 If everything works well you should receive the following response:
