@@ -27,7 +27,7 @@ Make a new client
 ```java
 PdpClient client = new PdpClient.Builder()
 			.hostname("localhost")
-			.port(8181).policyPath("/java/authz/allow")
+			.port(8181).policyPath("/authz/allow")
 			.retryMaxAttempts(5)
 			.build();
  
@@ -44,7 +44,7 @@ JsonNode response = client.getJsonResponse(input);
 
  1. `hostname`: The hostname of the Policy Decision Point (PDP). **Default is localhost**
  2. `port`: The port at which the OPA service is running. **Default is 8181**
- 3. `policyPath`: Full path to the policy (including the rule) that decides whether requests should be authorized. **Default is '/v1/data/authz'**
+ 3. `policyPath`: Full path to the policy (including the rule) that decides whether requests should be authorized. **Default is '/v1/data/authz/allow'**
  4. `retryMaxAttempts` - Integer. the maximum number of retry attempts in case a failure occurs. **Default is 2**.
  5. `pdp.enable`: Boolean. Whether or not to consult with the policy engine for the specific request. **Default is true**
  6. `readTimeoutMilliseconds` - Integer. Read timeout for requests in milliseconds. **Default is 5000**
