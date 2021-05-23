@@ -4,16 +4,16 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class PdpRequestResources {
-    String[] requirements;
+    String[] permissions;
     Map<String, String> attributes;
 
-    public PdpRequestResources(String[] requirements, Map<String, String> attributes) {
-        this.requirements = requirements;
+    public PdpRequestResources(String[] permissions, Map<String, String> attributes) {
+        this.permissions = permissions;
         this.attributes = attributes;
     }
 
     public PdpRequestResources() {
-        this.requirements = new String[0];
+        this.permissions = new String[0];
         this.attributes = new HashMap<String, String>();
     }
 
@@ -21,7 +21,7 @@ public class PdpRequestResources {
         return attributes;
     }
 
-    public String[] getRequirements() {
-        return requirements;
+    public String[] getPermissions() {
+        return permissions;
     }
 }
